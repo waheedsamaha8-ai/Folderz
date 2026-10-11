@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#020617" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+
+    <!-- Gold Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="35%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+
+    <!-- Emerald Pulse Gradient -->
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <!-- Cyan Accent Gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <!-- Inner Glow Filter -->
+    <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Outer Squircle Canvas -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="8" filter="url(#dropShadow)" />
+
+  <!-- Subtle Blueprint Tech Lines -->
+  <path d="M64 160H448M64 256H448M64 352H448M160 64V448M256 64V448M352 64V448" stroke="#f59e0b" stroke-width="1.5" stroke-opacity="0.1" stroke-dasharray="8 8" />
+
+  <!-- Outer Vault Shield Frame -->
+  <rect x="70" y="70" width="372" height="372" rx="76" fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-opacity="0.25" />
+
+  <!-- Main Smart Vault & Portfolio Lockup -->
+  <g transform="translate(96, 106)" filter="url(#dropShadow)">
+    <!-- Back Folder Card -->
+    <path d="M25 65 C25 48.4 38.4 35 55 35 L125 35 C137 35 147 41 153 51 L169 75 L245 75 C261.6 75 275 88.4 275 105 L275 235 C275 251.6 261.6 265 245 265 L55 265 C38.4 265 25 251.6 25 235 Z" fill="url(#goldGrad)" opacity="0.95" />
+    
+    <!-- White Document Paper Inside Vault -->
+    <rect x="55" y="65" width="210" height="180" rx="12" fill="#ffffff" opacity="0.9" />
+    <line x1="75" y1="95" x2="215" y2="95" stroke="#0f172a" stroke-width="6" stroke-linecap="round" opacity="0.7" />
+    <line x1="75" y1="115" x2="185" y2="115" stroke="#f59e0b" stroke-width="5" stroke-linecap="round" opacity="0.8" />
+
+    <!-- Front Vault Shield Door -->
+    <path d="M15 105 C15 88.4 28.4 75 45 75 L265 75 C281.6 75 295 88.4 295 105 L295 245 C295 261.6 281.6 275 265 275 L45 275 C28.4 275 15 261.6 15 245 Z" fill="#020617" stroke="url(#goldGrad)" stroke-width="6" />
+
+    <!-- Vault Dial & Smart Emblem -->
+    <circle cx="155" cy="175" r="46" fill="none" stroke="url(#goldGrad)" stroke-width="6" />
+    <circle cx="155" cy="175" r="32" fill="url(#goldGrad)" opacity="0.2" />
+    <circle cx="155" cy="175" r="16" fill="url(#goldGrad)" />
+    
+    <!-- Precision Dial Notches -->
+    <line x1="155" y1="135" x2="155" y2="147" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" />
+    <line x1="155" y1="203" x2="155" y2="215" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" />
+    <line x1="115" y1="175" x2="127" y2="175" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" />
+    <line x1="183" y1="175" x2="195" y2="175" stroke="url(#goldGrad)" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Smart Checkmark Badge -->
+    <path d="M145 175 L152 182 L165 168" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+
+  <!-- Active Instant Sync Badge (Bottom Right) -->
+  <g transform="translate(352, 352)" filter="url(#dropShadow)">
+    <circle cx="28" cy="28" r="32" fill="#020617" stroke="url(#emeraldGrad)" stroke-width="5" />
+    <circle cx="28" cy="28" r="20" fill="url(#emeraldGrad)" />
+    <path d="M20 28 L25 33 L36 21" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+</svg>

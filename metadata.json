@@ -1,0 +1,12 @@
+{
+  "name": "الحافظة - الحافظة الذكية والمستندات",
+  "description": "تطبيق الحافظة الشامل لحفظ وتنظيم كافة المستندات، الملفات، العقود، الصور، الملاحظات والمشروعات مع دعم الذكاء الاصطناعي والتصدير.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- STRICT VIEWPORT: Prevents zooming, handles notch area, disables user scaling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+    
+    <!-- PWA Standalone Mode - Forced Fullscreen -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    
+    <!-- Fullscreen Orientation Locks (Hints for browsers) -->
+    <meta name="screen-orientation" content="portrait">
+    <meta name="full-screen" content="yes">
+    <meta name="browsermode" content="application">
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    
+    <!-- PERFORMANCE: Preconnect to critical domains -->
+    <link rel="preconnect" href="https://www.googleapis.com" />
+    <link rel="preconnect" href="https://accounts.google.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" />
+
+    <title>الحافظة - الحافظة الذكية والمستندات</title>
+    <meta name="description" content="تطبيق الحافظة الشامل لحفظ وتنظيم كافة المستندات، الملفات، العقود، الصور، الملاحظات والمشروعات مع دعم الذكاء الاصطناعي والتصدير." />
+    <meta property="og:title" content="الحافظة - الحافظة الذكية والمستندات" />
+    <meta property="og:description" content="تطبيق الحافظة الشامل لحفظ وتنظيم كافة المستندات، الملفات، العقود، الصور، الملاحظات والمشروعات مع دعم الذكاء الاصطناعي والتصدير." />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <!-- html2canvas for Image export functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Leaflet CSS (For Maps) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              slate: {
+                850: '#1e293b',
+                900: '#0f172a',
+                950: '#020617',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- ROBUST POLYFILLS FOR PROCESS -->
+    <script>
+      // Ensures 'process' is available globally to prevent "ReferenceError: process is not defined"
+      window.global = window;
+      window.process = {
+        env: { NODE_ENV: 'development' },
+        version: '',
+        nextTick: function(cb) { setTimeout(cb, 0); }
+      };
+      var process = window.process; 
+    </script>
+    <link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root">
+        <!-- Initial Loading State (Shows before React Loads) -->
+        <div class="app-loader">
+            <div class="loader-logo-badge">
+                <div class="logo-outer-glow"></div>
+                <div class="logo-inner-box">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" fill="url(#goldGrad)" stroke="#f59e0b" stroke-width="1.5"/>
+                        <circle cx="17" cy="15" r="2" fill="#10b981"/>
+                        <defs>
+                            <linearGradient id="goldGrad" x1="0" y1="0" x2="24" y2="24">
+                                <stop offset="0%" stop-color="#facc15"/>
+                                <stop offset="100%" stop-color="#b45309"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+            </div>
+            <p class="loader-title">الحافظة الذكية Pro</p>
+            <p class="loader-subtitle">Smart Portfolio & Vault</p>
+            <div class="loader-progress-bar">
+                <div class="loader-progress-fill"></div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
