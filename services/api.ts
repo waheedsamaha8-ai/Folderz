@@ -4,8 +4,8 @@ import { triggerLoadingStart, triggerLoadingStop, triggerLoadingProgress } from 
 import { dbService } from './db'; 
 import { autoSync } from './backgroundSync'; 
 import { googleSheetsService } from './googleSheets';
-import { auth, googleProvider } from './firebaseConfig';
-import { signInWithPopup, GoogleAuthProvider, signOut as fbSignOut } from 'firebase/auth';
+import { signOut as fbSignOut } from 'firebase/auth';
+import { auth } from './firebaseConfig';
 import appletConfig from '../firebase-applet-config.json';
 
 declare const google: any;
@@ -158,7 +158,7 @@ const authService = {
       if (localStorage.getItem('app_user_logged_out') === 'true') {
           return false;
       }
-      return !!auth.currentUser || localStorage.getItem('app_user_logged_in') === 'true' || !!localStorage.getItem('google_access_token');
+      return (typeof auth !== 'undefined' && auth?.currentUser != null) || localStorage.getItem('app_user_logged_in') === 'true' || !!localStorage.getItem('google_access_token');
   },
   connectGoogleDrive: async (emailHint?: string) => {
       if (tokenClient) {
@@ -183,35 +183,22 @@ const authService = {
   signIn: async () => {
       localStorage.removeItem('app_user_logged_out');
       localStorage.setItem('app_user_logged_in', 'true');
-      // 1. Try Firebase Popup Auth first
-      try {
-          const result = await signInWithPopup(auth, googleProvider);
-          const credential = GoogleAuthProvider.credentialFromResult(result);
-          if (credential && credential.accessToken) {
-              accessToken = credential.accessToken;
-              localStorage.setItem('google_access_token', accessToken);
-              localStorage.removeItem('google_sheets_tatbiq_alhafeza_db_id');
-              try {
-                  await api.ensureRootFolder();
-              } catch (e) {}
-              window.location.reload();
-              return;
-          }
-      } catch (fbError: any) {
-          console.warn("Firebase Auth popup encountered:", fbError?.message);
-      }
-
-      // 2. Fallback to Google Identity Services Token Client
+      
+      // Use Google Identity Services Token Client directly (Prevents COOP cross-origin opener errors and Firebase popup-blocked issues)
       if (tokenClient) {
-          tokenClient.requestAccessToken();
-      } else {
-          authService.init();
-          setTimeout(() => {
-              if (tokenClient) {
-                  tokenClient.requestAccessToken();
-              }
-          }, 600);
+          try {
+              tokenClient.requestAccessToken();
+              return;
+          } catch (e) {
+              console.warn("GIS requestAccessToken error, reinitializing:", e);
+          }
       }
+      authService.init();
+      setTimeout(() => {
+          if (tokenClient) {
+              tokenClient.requestAccessToken();
+          }
+      }, 500);
   },
   signInGuest: () => {
       localStorage.removeItem('app_user_logged_out');

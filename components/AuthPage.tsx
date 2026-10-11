@@ -3,9 +3,7 @@ import { auth, googleProvider } from '../services/firebaseConfig';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
-    updateProfile, 
-    signInWithPopup, 
-    GoogleAuthProvider 
+    updateProfile 
 } from 'firebase/auth';
 import { api } from '../services/api';
 import { AppLogo } from './AppLogo';
@@ -191,39 +189,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
         setSuccessMessage('');
 
         try {
-            const result = await signInWithPopup(auth, googleProvider);
-            const credential = GoogleAuthProvider.credentialFromResult(result);
-            
-            if (credential && credential.accessToken) {
-                localStorage.setItem('google_access_token', credential.accessToken);
-                localStorage.removeItem('google_sheets_tatbiq_alhafeza_db_id');
-                try {
-                    await api.ensureRootFolder();
-                } catch (e) {}
-            }
-
             localStorage.setItem('app_user_logged_in', 'true');
             localStorage.removeItem('app_user_logged_out');
             
-            setSuccessMessage('تم الدخول والربط التلقائي بحساب Google Drive بنجاح!');
-            setTimeout(() => {
-                if (onAuthSuccess) onAuthSuccess();
-                else window.location.reload();
-            }, 600);
+            await api.signIn();
+            
+            setSuccessMessage('جاري الربط والتحويل لحساب Google...');
         } catch (err: any) {
             console.error('Google Auth Error:', err);
-            if (err.code === 'auth/popup-closed-by-user') {
-                setErrorMessage('تم إغلاق نافذة تسجيل الدخول قبل الإكمال');
-            } else if (err.code === 'auth/popup-blocked') {
-                setErrorMessage('تم حظر النافذة المنبثقة من قبل المتصفح. يرجى السماح بالنوافذ المنبثقة');
-            } else {
-                // Fallback to GIS Token Client
-                try {
-                    api.signIn();
-                } catch (gisErr: any) {
-                    setErrorMessage('تعذر إتمام الدخول عبر Google: ' + (err.message || ''));
-                }
-            }
+            setErrorMessage('تعذر فتح نافذة دخول Google. يرجى السماح بالنوافذ المنبثقة.');
         } finally {
             setLoadingGoogle(false);
         }

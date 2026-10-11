@@ -5,7 +5,6 @@ import {
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
     updateProfile,
-    signInWithPopup, 
     signOut as fbSignOut, 
     onAuthStateChanged,
     User
