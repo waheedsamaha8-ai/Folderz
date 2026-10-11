@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     const API_KEY_VALUE = env.API_KEY || "AIzaSyCdWOln5rFe1UL_toHSEZa5EpGmYXZ5qDo,AIzaSyBHmiowvWYif3325G6VQFofYi-ZnEBkBWs,AIzaSyAOyUdPOcjLtzYDeXOY9NFmOKfEm5SxdCk,AIzaSyAaHIMAm-JBRMWgLgbbwfwgLMAv_n2SZNQ";
 
     return {
-      base: '/',
+      base: './',
       server: {
         port: 3000,
         host: '0.0.0.0',
