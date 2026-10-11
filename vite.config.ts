@@ -7,32 +7,18 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Plugin to ensure relative ./ paths in index.html are correctly intercepted by Vite dev server
-const relativePathDevPlugin = () => ({
-  name: 'relative-path-dev-plugin',
-  configureServer(server: any) {
-    server.middlewares.use((req: any, _res: any, next: any) => {
-      if (req.url && req.url.startsWith('./')) {
-        req.url = req.url.substring(1); // Convert './index.tsx' -> '/index.tsx'
-      }
-      next();
-    });
-  }
-});
-
 export default defineConfig(({ command, mode }) => {
     const env = loadEnv(mode, '.', '');
     // Fallback keys if .env is missing or empty - Using the provided 4 keys
     const API_KEY_VALUE = env.API_KEY || "AIzaSyCdWOln5rFe1UL_toHSEZa5EpGmYXZ5qDo,AIzaSyBHmiowvWYif3325G6VQFofYi-ZnEBkBWs,AIzaSyAOyUdPOcjLtzYDeXOY9NFmOKfEm5SxdCk,AIzaSyAaHIMAm-JBRMWgLgbbwfwgLMAv_n2SZNQ";
 
     return {
-      base: './',
+      base: command === 'build' ? './' : '/',
       server: {
         port: 3000,
         host: '0.0.0.0',
       },
       plugins: [
-        relativePathDevPlugin(),
         react(),
         VitePWA({
           registerType: 'autoUpdate',
