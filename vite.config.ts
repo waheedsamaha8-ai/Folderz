@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -19,6 +20,7 @@ export default defineConfig(({ command, mode }) => {
         host: '0.0.0.0',
       },
       plugins: [
+        tailwindcss(),
         react(),
         VitePWA({
           registerType: 'autoUpdate',
@@ -72,7 +74,7 @@ export default defineConfig(({ command, mode }) => {
             cleanupOutdatedCaches: true,
             skipWaiting: true,
             clientsClaim: true,
-            navigateFallback: '/index.html',
+            navigateFallback: 'index.html',
             runtimeCaching: [
               {
                 urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

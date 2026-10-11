@@ -1,10 +1,13 @@
 
 
-/* 
-  Global Styles & Theme Overrides
-*/
-
+@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+
+@theme {
+  --color-slate-850: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+}
 
 :root {
   /* Prevent layout shift by reserving scrollbar space */
