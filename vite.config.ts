@@ -29,7 +29,7 @@ export default defineConfig(({ command, mode }) => {
           },
           includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
           manifest: {
-            id: '/',
+            id: './',
             name: 'الحافظة الذكية Pro',
             short_name: 'الحافظة',
             description: 'نظام الحافظة الذكية المتكامل لحفظ وتنظيم كافة المستندات والملفات والمحفظات',
@@ -37,29 +37,29 @@ export default defineConfig(({ command, mode }) => {
             background_color: '#0f172a',
             display: 'standalone',
             orientation: 'portrait',
-            start_url: '/',
-            scope: '/',
+            start_url: './',
+            scope: './',
             icons: [
               {
-                src: '/icon.svg',
+                src: 'icon.svg',
                 sizes: 'any',
                 type: 'image/svg+xml',
                 purpose: 'any'
               },
               {
-                src: '/pwa-192x192.png',
+                src: 'pwa-192x192.png',
                 sizes: '192x192',
                 type: 'image/png',
                 purpose: 'any'
               },
               {
-                src: '/pwa-512x512.png',
+                src: 'pwa-512x512.png',
                 sizes: '512x512',
                 type: 'image/png',
                 purpose: 'any'
               },
               {
-                src: '/pwa-maskable-512x512.png',
+                src: 'pwa-maskable-512x512.png',
                 sizes: '512x512',
                 type: 'image/png',
                 purpose: 'maskable'
