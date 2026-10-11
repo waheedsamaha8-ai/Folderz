@@ -7,13 +7,13 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
     const env = loadEnv(mode, '.', '');
     // Fallback keys if .env is missing or empty - Using the provided 4 keys
     const API_KEY_VALUE = env.API_KEY || "AIzaSyCdWOln5rFe1UL_toHSEZa5EpGmYXZ5qDo,AIzaSyBHmiowvWYif3325G6VQFofYi-ZnEBkBWs,AIzaSyAOyUdPOcjLtzYDeXOY9NFmOKfEm5SxdCk,AIzaSyAaHIMAm-JBRMWgLgbbwfwgLMAv_n2SZNQ";
 
     return {
-      base: './',
+      base: command === 'build' ? './' : '/',
       server: {
         port: 3000,
         host: '0.0.0.0',
