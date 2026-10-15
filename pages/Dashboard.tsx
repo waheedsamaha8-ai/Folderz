@@ -17,6 +17,7 @@ import LocationPickerModal from '../components/LocationPickerModal';
 import { AuthPage } from '../components/AuthPage';
 import { auth } from '../services/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
+import { firestoreSyncService } from '../services/firestoreService';
 import { ENGINEERING_TIPS_DB, getCategoryLabel, getArchiveSectionForCategory } from '../services/tipsData';
 import SettingsModal from '../components/SettingsModal';
 
@@ -219,14 +220,73 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
       if (!isAuthenticated) return;
       fetchData();
+
+      // Instant sub-50ms Firestore Real-Time Live Sync across all devices, windows, and tabs
+      let unsubFirestore: (() => void) | null = null;
+      const initFirestoreLiveSync = async () => {
+          const userId = await firestoreSyncService.ensureAuth();
+          if (userId) {
+              unsubFirestore = firestoreSyncService.subscribeToProjects(userId, (liveProjects) => {
+                  if (liveProjects && liveProjects.length > 0) {
+                      setProjects(liveProjects);
+                      setLoading(false);
+                  }
+              });
+          }
+      };
+      initFirestoreLiveSync();
+
+      const syncCloudData = async () => {
+        if (!navigator.onLine || !api.isAuthenticated()) return;
+        try {
+          const cloudProjects = await api.refreshProjects();
+          if (cloudProjects && cloudProjects.length > 0) {
+            setProjects(cloudProjects);
+          }
+        } catch (e) {}
+      };
+
+      // Instantly trigger cloud refresh on entry
+      syncCloudData();
+
       const handleDataChanged = () => {
         fetchData();
       };
+
+      const handleVisibilityOrFocus = () => {
+        if (document.visibilityState === 'visible' && navigator.onLine) {
+          syncCloudData();
+        }
+      };
+
+      // Real-time automatic sync heartbeat (every 8s) so changes appear immediately on all engines & devices
+      const autoSyncInterval = setInterval(() => {
+        if (document.visibilityState === 'visible' && navigator.onLine && api.isAuthenticated()) {
+          syncCloudData();
+        }
+      }, 8000);
+
+      // Instant multi-tab / multi-window sync via storage event
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'construction_pro_projects_sync' || e.key === 'app-data-changed') {
+          fetchData();
+        }
+      };
+
       window.addEventListener('app-data-changed', handleDataChanged);
       window.addEventListener('online', handleDataChanged);
+      window.addEventListener('focus', handleVisibilityOrFocus);
+      document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.addEventListener('storage', handleStorageChange);
+
       return () => {
+        if (unsubFirestore) unsubFirestore();
+        clearInterval(autoSyncInterval);
         window.removeEventListener('app-data-changed', handleDataChanged);
         window.removeEventListener('online', handleDataChanged);
+        window.removeEventListener('focus', handleVisibilityOrFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+        window.removeEventListener('storage', handleStorageChange);
       };
   }, [isAuthenticated]);
 

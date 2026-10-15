@@ -7,6 +7,7 @@ import {
 } from 'firebase/auth';
 import { api } from '../services/api';
 import { AppLogo } from './AppLogo';
+import { firestoreSyncService } from '../services/firestoreService';
 
 interface AuthPageProps {
     onAuthSuccess?: () => void;
@@ -14,6 +15,9 @@ interface AuthPageProps {
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
     const [tab, setTab] = useState<'signin' | 'signup'>('signin');
+    
+    // Commercial Account Type
+    const [accountType, setAccountType] = useState<'consultant' | 'contractor' | 'individual'>('consultant');
     
     // Sign In form fields
     const [signInEmail, setSignInEmail] = useState('');
@@ -131,6 +135,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
 
         // Helper to complete registration locally
         const completeLocalSignUp = () => {
+            // Clear any stale cached folder IDs from previous account session
+            localStorage.removeItem('google_drive_root_id');
+            localStorage.removeItem('google_drive_tatbiq_alhafeza_root_id');
+            localStorage.removeItem('google_sheets_db_id');
+            localStorage.removeItem('google_sheets_tatbiq_alhafeza_db_id');
+
             try {
                 const localUsers = JSON.parse(localStorage.getItem('app_local_users') || '{}');
                 localUsers[cleanEmail] = signUpPassword;
@@ -138,13 +148,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
             } catch (e) {}
 
             localStorage.setItem('user_email', cleanEmail);
+            localStorage.setItem('user_account_type', accountType);
             if (displayName.trim()) {
                 localStorage.setItem('user_display_name', displayName.trim());
             }
             localStorage.setItem('app_user_logged_in', 'true');
             localStorage.removeItem('app_user_logged_out');
             
-            setSuccessMessage('تم إنشاء الحساب بنجاح! جاري الربط التلقائي...');
+            const uId = auth.currentUser?.uid || 'user_' + btoa(cleanEmail.toLowerCase()).replace(/[^a-zA-Z0-9]/g, '_').slice(0, 32);
+            firestoreSyncService.saveUserProfile({ uid: uId, email: cleanEmail, displayName: displayName.trim() }, { accountType }).catch(console.warn);
+
+            setSuccessMessage('تم إنشاء الحساب بنجاح! جاري التهيئة والربط بجوجل درايف...');
 
             try {
                 api.connectGoogleDrive(cleanEmail);
@@ -166,16 +180,23 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
             }
             completeLocalSignUp();
         } catch (err: any) {
-            console.warn('Firebase Sign Up Error (falling back to local user creation):', err);
+            console.warn('Firebase Sign Up Result:', err);
             
             if (err.code === 'auth/email-already-in-use') {
-                setErrorMessage('هذا البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول به مباشرة');
+                try {
+                    // Automatically log in if password matches
+                    await signInWithEmailAndPassword(auth, cleanEmail, signUpPassword);
+                    completeLocalSignUp();
+                    return;
+                } catch (loginErr) {
+                    setErrorMessage('هذا البريد مسجل بكلمة سر مختلفة. يرجى الانتقال إلى "تسجيل الدخول"');
+                }
             } else if (err.code === 'auth/weak-password') {
-                setErrorMessage('كلمة السر ضعيفة جداً. يرجى اختيار كلمة سر أقوى');
+                setErrorMessage('كلمة السر ضعيفة جداً. يرجى اختيار كلمة سر من 6 خانات أو أكثر');
             } else if (err.code === 'auth/invalid-email') {
                 setErrorMessage('صيغة البريد الإلكتروني غير صالحة');
             } else {
-                // If Firebase fails due to unconfigured project, network, or disabled email auth, complete locally!
+                // Complete sign up smoothly for commercial mode
                 completeLocalSignUp();
             }
         } finally {
@@ -367,6 +388,47 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
                     {/* Sign Up Form - Ultra Compact (Reduced Height Fields so ALL Buttons Fit) */}
                     {tab === 'signup' && (
                         <form onSubmit={handleEmailSignUp} className="space-y-1">
+                            <div>
+                                <label className="block text-[8.5px] font-bold text-slate-700 leading-tight mb-0.5">
+                                    نوع الحساب التجاري:
+                                </label>
+                                <div className="grid grid-cols-3 gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setAccountType('consultant')}
+                                        className={`py-0.5 px-1 rounded text-[8.5px] font-bold border transition text-center ${
+                                            accountType === 'consultant'
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs font-black'
+                                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        مكتب / مهندس
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAccountType('contractor')}
+                                        className={`py-0.5 px-1 rounded text-[8.5px] font-bold border transition text-center ${
+                                            accountType === 'contractor'
+                                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-black'
+                                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        شركة / مقاولات
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAccountType('individual')}
+                                        className={`py-0.5 px-1 rounded text-[8.5px] font-bold border transition text-center ${
+                                            accountType === 'individual'
+                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-black'
+                                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        حساب شخصي
+                                    </button>
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-[9px] font-bold text-slate-700 leading-tight mb-0.5">
                                     البريد الإلكتروني (الجيميل) *:

@@ -22,22 +22,17 @@ export const AppLogo: React.FC<AppLogoProps> = ({
 
   return (
     <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      {/* Modern High-Tech Isometric Vault & Folder Logo */}
+      {/* Modern Minimalist Portfolio & Vault Logo */}
       <div className={`relative ${currentSize.box} shrink-0 group cursor-pointer`}>
         {/* Outer Glow Effect */}
-        <div className="absolute -inset-0.5 bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-600 rounded-xl blur-[3px] opacity-70 group-hover:opacity-100 transition duration-300"></div>
+        <div className="absolute -inset-0.5 bg-gradient-to-tr from-amber-500 to-amber-600 rounded-xl blur-[2px] opacity-70 group-hover:opacity-100 transition duration-300"></div>
         
-        {/* Main Logo Shield Badge */}
-        <div className="relative w-full h-full bg-gradient-to-b from-slate-900 via-slate-950 to-indigo-950 rounded-xl p-1 flex items-center justify-center border border-amber-400/40 shadow-xl overflow-hidden">
-          {/* Subtle Background Pattern Lines */}
-          <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" viewBox="0 0 40 40" fill="none">
-            <path d="M0 10H40M0 20H40M0 30H40M10 0V40M20 0V40M30 0V40" stroke="currentColor" strokeWidth="0.5" className="text-amber-400" />
-          </svg>
-
-          {/* Golden Folder / Vault Icon */}
+        {/* Main Logo Badge */}
+        <div className="relative w-full h-full bg-slate-900 rounded-xl p-1 flex items-center justify-center border border-amber-400/40 shadow-lg overflow-hidden">
+          {/* Minimalist Folder Icon with Golden Amber accent */}
           <div className="relative z-10 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform duration-300">
-            <i className={`fa-solid fa-folder-closed ${currentSize.icon} drop-shadow-[0_2px_4px_rgba(245,158,11,0.5)]`}></i>
-            <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-slate-900 animate-pulse"></div>
+            <i className={`fa-solid fa-folder-open ${currentSize.icon} drop-shadow-sm`}></i>
+            <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-slate-900"></div>
           </div>
         </div>
       </div>

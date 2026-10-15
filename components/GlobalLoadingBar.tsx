@@ -66,8 +66,8 @@ const GlobalLoadingBar: React.FC = () => {
   const currentPercent = Math.round(progress);
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] pointer-events-none animate-slide-up dir-rtl px-3 w-full max-w-md">
-      <div className="bg-slate-950/95 backdrop-blur-xl text-white px-5 py-3.5 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] border border-cyan-500/30 flex flex-col gap-2.5">
+    <div className="fixed bottom-6 sm:bottom-8 inset-x-0 mx-auto z-[10000] pointer-events-none animate-slide-up px-4 w-full max-w-md">
+      <div className="bg-slate-950/95 backdrop-blur-xl text-white px-5 py-3.5 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.6)] border border-cyan-500/30 flex flex-col gap-2.5" dir="rtl">
         
         {/* Header Row */}
         <div className="flex items-center justify-between gap-3 text-xs font-bold">
@@ -97,9 +97,9 @@ const GlobalLoadingBar: React.FC = () => {
         </div>
 
         {/* Animated Progress Track */}
-        <div className="w-full bg-slate-800/80 h-2.5 rounded-full overflow-hidden border border-white/10 relative p-0.5 shadow-inner">
+        <div className="w-full bg-slate-800/80 h-2.5 rounded-full overflow-hidden border border-white/10 relative p-0.5 shadow-inner" dir="rtl">
           <div 
-            className={`h-full transition-all duration-200 ease-out rounded-full relative ${
+            className={`h-full transition-all duration-300 ease-out rounded-full relative ${
               isFinished 
                 ? 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300' 
                 : 'bg-gradient-to-r from-blue-600 via-cyan-400 to-indigo-400 shadow-[0_0_12px_rgba(6,182,212,0.8)]'

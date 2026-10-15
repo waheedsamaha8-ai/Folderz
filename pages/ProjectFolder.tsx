@@ -18,20 +18,134 @@ import ProjectMasterData from '../components/ProjectMasterData';
 import { DwgController, openDwgInExternalApp } from '../components/DwgController'; 
 import { ReportGenerator } from '../services/reportGenerator'; // IMPORT GENERATOR
 import ShareModal from '../components/ShareModal';
+import { firestoreSyncService } from '../services/firestoreService';
 
 // ... (ArchiveSummaryCard, CategoryCard, FileGridCard, ArchiveFullViewer, SkeletonRow components remain unchanged) ...
 const ArchiveSummaryCard: React.FC<{ item: FileItem, onClick: () => void, onDelete: () => void, onRename: () => void, onMove: () => void, onShare: () => void }> = ({ item, onClick, onDelete, onRename, onMove, onShare }) => {
-    const [showMenu, setShowMenu] = useState(false); const menuRef = useRef<HTMLDivElement>(null); const btnRef = useRef<HTMLButtonElement>(null);
-    useEffect(() => { const handleClickOutside = (event: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(event.target as Node) && btnRef.current && !btnRef.current.contains(event.target as Node)) setShowMenu(false); }; if (showMenu) document.addEventListener('mousedown', handleClickOutside); return () => document.removeEventListener('mousedown', handleClickOutside); }, [showMenu]);
-    return ( <div onClick={onClick} className={`bg-white rounded-2xl shadow-sm border border-slate-100 overflow-visible mb-3 transition hover:shadow-md cursor-pointer group relative ${showMenu ? 'z-[100]' : 'z-0'}`}> <div className="px-4 py-3 flex justify-between items-center"> <div className="flex items-center gap-3 overflow-hidden"> <div className="w-10 h-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100 group-hover:bg-teal-100 transition shrink-0"><i className="fa-solid fa-file-contract text-sm"></i></div> <div className="min-w-0"><h3 className="font-bold text-slate-800 text-sm group-hover:text-teal-700 transition truncate">{item.name.replace('.html', '')}</h3><p className="text-[10px] text-slate-400">{new Date(item.createdTime).toLocaleDateString('ar-EG')}</p></div> </div> <div className="relative"><button ref={btnRef} onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${showMenu ? 'bg-teal-50 text-teal-600' : 'bg-slate-50 text-slate-400 hover:text-teal-600'}`}><i className="fa-solid fa-ellipsis-vertical text-xs"></i></button>{showMenu && (<div ref={menuRef} className="absolute left-0 top-full mt-1 w-40 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-scale-in origin-top-left"><button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onShare()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 border-b"><i className="fa-solid fa-share-nodes text-indigo-500 w-4"></i> مشاركة</button><button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onRename()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-pen-to-square text-blue-500 w-4"></i> تعديل</button><button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onMove()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-arrow-right-to-bracket text-orange-500 w-4"></i> نقل</button><button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onDelete()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"><i className="fa-solid fa-trash text-red-500 w-4"></i> حذف</button></div>)}</div> </div> </div> );
+    const [showMenu, setShowMenu] = useState(false); 
+    const [menuPos, setMenuPos] = useState<'top' | 'bottom'>('bottom');
+    const menuRef = useRef<HTMLDivElement>(null); 
+    const btnRef = useRef<HTMLButtonElement>(null);
+    useEffect(() => { 
+        const handleClickOutside = (event: MouseEvent) => { 
+            if (menuRef.current && !menuRef.current.contains(event.target as Node) && btnRef.current && !btnRef.current.contains(event.target as Node)) setShowMenu(false); 
+        }; 
+        if (showMenu) document.addEventListener('mousedown', handleClickOutside); 
+        return () => document.removeEventListener('mousedown', handleClickOutside); 
+    }, [showMenu]);
+    
+    const handleToggleMenu = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!showMenu && btnRef.current) {
+            const rect = btnRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            setMenuPos((spaceBelow < 200 && spaceAbove > spaceBelow) ? 'top' : 'bottom');
+        }
+        setShowMenu(!showMenu);
+    };
+
+    return ( 
+      <div onClick={onClick} className={`bg-white rounded-2xl shadow-sm border border-slate-100 overflow-visible mb-3 transition hover:shadow-md cursor-pointer group relative ${showMenu ? 'z-[100]' : 'z-0'}`}> 
+        <div className="px-4 py-3 flex justify-between items-center"> 
+          <div className="flex items-center gap-3 overflow-hidden"> 
+            <div className="w-10 h-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center border border-teal-100 group-hover:bg-teal-100 transition shrink-0">
+              <i className="fa-solid fa-file-contract text-sm"></i>
+            </div> 
+            <div className="min-w-0">
+              <h3 className="font-bold text-slate-800 text-sm group-hover:text-teal-700 transition truncate">{item.name.replace('.html', '')}</h3>
+              <p className="text-[10px] text-slate-400">{new Date(item.createdTime).toLocaleDateString('ar-EG')}</p>
+            </div> 
+          </div> 
+          <div className="relative">
+            <button ref={btnRef} onClick={handleToggleMenu} className={`w-8 h-8 rounded-full flex items-center justify-center transition ${showMenu ? 'bg-teal-50 text-teal-600' : 'bg-slate-50 text-slate-400 hover:text-teal-600'}`}>
+              <i className="fa-solid fa-ellipsis-vertical text-xs"></i>
+            </button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} />
+                <div ref={menuRef} className={`absolute left-0 ${menuPos === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'} w-40 bg-white rounded-xl shadow-xl border border-slate-100 z-50 max-h-[min(220px,calc(100vh-120px))] overflow-y-auto custom-scrollbar animate-scale-in origin-top-left`}>
+                  <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onShare()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 border-b"><i className="fa-solid fa-share-nodes text-indigo-500 w-4"></i> مشاركة</button>
+                  <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onRename()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-pen-to-square text-blue-500 w-4"></i> تعديل</button>
+                  <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onMove()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-arrow-right-to-bracket text-orange-500 w-4"></i> نقل</button>
+                  <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onDelete()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"><i className="fa-solid fa-trash text-red-500 w-4"></i> حذف</button>
+                </div>
+              </>
+            )}
+          </div> 
+        </div> 
+      </div> 
+    );
 };
 const CategoryCard: React.FC<{ item: FileItem, onClick: () => void, onRename: () => void, onMove: () => void, onDelete: () => void, onShare: () => void }> = ({ item, onClick, onRename, onMove, onDelete, onShare }) => {
-    const sectionInfo = ARCHIVE_SECTIONS.find(s => s.name === item.name) || { icon: 'fa-folder-open', color: 'slate', desc: 'مجلد أرشيف' }; const [showMenu, setShowMenu] = useState(false); const menuRef = useRef<HTMLDivElement>(null); const btnRef = useRef<HTMLButtonElement>(null);
-    useEffect(() => { const handleClickOutside = (event: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(event.target as Node) && btnRef.current && !btnRef.current.contains(event.target as Node)) setShowMenu(false); }; if (showMenu) document.addEventListener('mousedown', handleClickOutside); return () => document.removeEventListener('mousedown', handleClickOutside); }, [showMenu]);
-    return ( <div onClick={onClick} className={`bg-gradient-to-br from-${sectionInfo.color}-600 to-${sectionInfo.color}-800 rounded-3xl p-5 shadow-lg relative overflow-visible group cursor-pointer mb-3 transition transform hover:-translate-y-1 hover:shadow-xl ${showMenu ? 'z-[100]' : 'z-0'}`}> <div className="absolute -right-4 -bottom-4 text-white opacity-10 text-8xl transform rotate-12 group-hover:scale-110 transition duration-500 pointer-events-none"><i className={`fa-solid ${sectionInfo.icon}`}></i></div> <div className="relative z-10 flex justify-between items-start"> <div className="flex items-center gap-4"><div className={`w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white shadow-inner border border-white/10`}><i className={`fa-solid ${sectionInfo.icon} text-2xl`}></i></div><div><h3 className="font-extrabold text-white text-lg mb-1">{item.name}</h3><p className="text-white/80 text-xs font-medium">{sectionInfo.desc}</p></div></div> <div className="flex flex-col items-end gap-2"> <div className="bg-white/20 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md shadow-sm flex items-center gap-1.5"><span className="text-[10px] font-bold text-white">{item.fileCount || 0}</span><span className="text-[9px] text-white/90">ملف</span></div> <div className="relative mt-1"><button ref={btnRef} onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }} className={`w-8 h-8 rounded-full flex items-center justify-center transition border border-white/10 ${showMenu ? 'bg-white text-slate-800' : 'bg-white/10 text-white hover:bg-white/30'}`}><i className="fa-solid fa-ellipsis-vertical text-xs"></i></button>{showMenu && ( <div ref={menuRef} className="absolute left-0 top-full mt-1 w-40 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-scale-in text-slate-800 origin-top-left"><button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onShare()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 border-b"><i className="fa-solid fa-share-nodes text-indigo-500 w-4"></i> مشاركة</button><button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onRename()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-pen-to-square text-blue-500 w-4"></i> تعديل</button><button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onMove()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-arrow-right-to-bracket text-orange-500 w-4"></i> نقل</button><button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onDelete()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"><i className="fa-solid fa-trash text-red-500 w-4"></i> حذف</button></div> )}</div> </div> </div> </div> );
+    const sectionInfo = ARCHIVE_SECTIONS.find(s => s.name === item.name) || { icon: 'fa-folder-open', color: 'slate', desc: 'مجلد أرشيف' }; 
+    const [showMenu, setShowMenu] = useState(false); 
+    const [menuPos, setMenuPos] = useState<'top' | 'bottom'>('bottom');
+    const menuRef = useRef<HTMLDivElement>(null); 
+    const btnRef = useRef<HTMLButtonElement>(null);
+    useEffect(() => { 
+        const handleClickOutside = (event: MouseEvent) => { 
+            if (menuRef.current && !menuRef.current.contains(event.target as Node) && btnRef.current && !btnRef.current.contains(event.target as Node)) setShowMenu(false); 
+        }; 
+        if (showMenu) document.addEventListener('mousedown', handleClickOutside); 
+        return () => document.removeEventListener('mousedown', handleClickOutside); 
+    }, [showMenu]);
+
+    const handleToggleMenu = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!showMenu && btnRef.current) {
+            const rect = btnRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            setMenuPos((spaceBelow < 200 && spaceAbove > spaceBelow) ? 'top' : 'bottom');
+        }
+        setShowMenu(!showMenu);
+    };
+
+    return ( 
+      <div onClick={onClick} className={`bg-gradient-to-br from-${sectionInfo.color}-600 to-${sectionInfo.color}-800 rounded-3xl p-5 shadow-lg relative overflow-visible group cursor-pointer mb-3 transition transform hover:-translate-y-1 hover:shadow-xl ${showMenu ? 'z-[100]' : 'z-0'}`}> 
+        <div className="absolute -right-4 -bottom-4 text-white opacity-10 text-8xl transform rotate-12 group-hover:scale-110 transition duration-500 pointer-events-none">
+          <i className={`fa-solid ${sectionInfo.icon}`}></i>
+        </div> 
+        <div className="relative z-10 flex justify-between items-start"> 
+          <div className="flex items-center gap-4">
+            <div className={`w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white shadow-inner border border-white/10`}>
+              <i className={`fa-solid ${sectionInfo.icon} text-2xl`}></i>
+            </div>
+            <div>
+              <h3 className="font-extrabold text-white text-lg mb-1">{item.name}</h3>
+              <p className="text-white/80 text-xs font-medium">{sectionInfo.desc}</p>
+            </div>
+          </div> 
+          <div className="flex flex-col items-end gap-2"> 
+            <div className="bg-white/20 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md shadow-sm flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-white">{item.fileCount || 0}</span>
+              <span className="text-[9px] text-white/90">ملف</span>
+            </div> 
+            <div className="relative mt-1">
+              <button ref={btnRef} onClick={handleToggleMenu} className={`w-8 h-8 rounded-full flex items-center justify-center transition border border-white/10 ${showMenu ? 'bg-white text-slate-800' : 'bg-white/10 text-white hover:bg-white/30'}`}>
+                <i className="fa-solid fa-ellipsis-vertical text-xs"></i>
+              </button>
+              {showMenu && ( 
+                <>
+                  <div className="fixed inset-0 z-30" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} />
+                  <div ref={menuRef} className={`absolute left-0 ${menuPos === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'} w-40 bg-white rounded-xl shadow-xl border border-slate-100 z-50 max-h-[min(220px,calc(100vh-120px))] overflow-y-auto custom-scrollbar animate-scale-in text-slate-800 origin-top-left`}>
+                    <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onShare()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 border-b"><i className="fa-solid fa-share-nodes text-indigo-500 w-4"></i> مشاركة</button>
+                    <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onRename()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-pen-to-square text-blue-500 w-4"></i> تعديل</button>
+                    <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onMove()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-arrow-right-to-bracket text-orange-500 w-4"></i> نقل</button>
+                    <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onDelete()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"><i className="fa-solid fa-trash text-red-500 w-4"></i> حذف</button>
+                  </div> 
+                </>
+              )}
+            </div> 
+          </div> 
+        </div> 
+      </div> 
+    );
 };
 const FileGridCard: React.FC<{ item: FileItem, onClick: () => void, onDelete: () => void, onRename: () => void, onMove: () => void, onShare: () => void }> = ({ item, onClick, onDelete, onRename, onMove, onShare }) => {
     const [showMenu, setShowMenu] = useState(false); 
+    const [menuPos, setMenuPos] = useState<{v: 'top' | 'bottom', h: 'left' | 'right'}>({v: 'bottom', h: 'right'});
     const [imgError, setImgError] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null); 
     const btnRef = useRef<HTMLButtonElement>(null); 
@@ -46,6 +160,20 @@ const FileGridCard: React.FC<{ item: FileItem, onClick: () => void, onDelete: ()
       if (showMenu) document.addEventListener('mousedown', handleClickOutside); 
       return () => document.removeEventListener('mousedown', handleClickOutside); 
     }, [showMenu]);
+
+    const handleToggleMenu = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!showMenu && btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        const v = (spaceBelow < 220 && spaceAbove > spaceBelow) ? 'top' : 'bottom';
+        // When button is near the right edge, use 'right-0' to expand inward; otherwise 'left-0'
+        const h = (rect.right > 160) ? 'right' : 'left';
+        setMenuPos({v, h});
+      }
+      setShowMenu(!showMenu);
+    };
 
     const getIcon = () => { 
       if (isFolder) return { icon: 'fa-folder', color: 'text-yellow-500', bg: 'bg-yellow-50 border-yellow-100' }; 
@@ -104,16 +232,19 @@ const FileGridCard: React.FC<{ item: FileItem, onClick: () => void, onDelete: ()
           )}
         </div> 
         <div className="absolute top-2 right-2">
-          <button ref={btnRef} onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }} className={`w-7 h-7 rounded-full flex items-center justify-center transition border border-slate-100 ${showMenu ? 'bg-blue-50 text-blue-600 opacity-100' : 'bg-white text-slate-400 opacity-0 group-hover:opacity-100 hover:text-blue-600 shadow-sm'}`}>
+          <button ref={btnRef} onClick={handleToggleMenu} className={`w-7 h-7 rounded-full flex items-center justify-center transition border border-slate-100 ${showMenu ? 'bg-blue-50 text-blue-600 opacity-100' : 'bg-white text-slate-400 opacity-0 group-hover:opacity-100 hover:text-blue-600 shadow-sm'}`}>
             <i className="fa-solid fa-ellipsis-vertical text-[10px]"></i>
           </button>
           {showMenu && (
-            <div ref={menuRef} className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden animate-scale-in origin-top-right">
-              <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onShare()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 border-b"><i className="fa-solid fa-share-nodes text-indigo-500 w-4"></i> مشاركة</button>
-              <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onRename()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-pen-to-square text-blue-500 w-4"></i> تعديل</button>
-              <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onMove()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-b"><i className="fa-solid fa-arrow-right-to-bracket text-orange-500 w-4"></i> نقل</button>
-              <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onDelete()}} className="w-full text-right px-3 py-2.5 text-[10px] font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"><i className="fa-solid fa-trash text-red-500 w-4"></i> حذف</button>
-            </div>
+            <>
+              <div className="fixed inset-0 z-30" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} />
+              <div ref={menuRef} className={`absolute ${menuPos.h === 'left' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'} ${menuPos.v === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} w-36 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 py-1.5 animate-scale-in`}>
+                <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onShare()}} className="w-full text-right px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2.5 border-b border-slate-100 transition"><i className="fa-solid fa-share-nodes text-indigo-500 w-4"></i> مشاركة</button>
+                <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onRename()}} className="w-full text-right px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 border-b border-slate-100 transition"><i className="fa-solid fa-pen-to-square text-blue-500 w-4"></i> تعديل</button>
+                <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onMove()}} className="w-full text-right px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 border-b border-slate-100 transition"><i className="fa-solid fa-arrow-right-to-bracket text-orange-500 w-4"></i> نقل</button>
+                <button onClick={(e)=>{e.stopPropagation();setShowMenu(false);onDelete()}} className="w-full text-right px-3.5 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition"><i className="fa-solid fa-trash text-red-500 w-4"></i> حذف</button>
+              </div>
+            </>
           )}
         </div> 
       </div> 
@@ -400,14 +531,53 @@ export default function ProjectFolder() {
   
   useEffect(() => { 
     if (currentFolderId) fetchContents(); 
+
+    // Instant real-time live files sync across devices via Firestore
+    let unsubFiles: (() => void) | null = null;
+    const initFilesLiveSync = async () => {
+      await firestoreSyncService.ensureAuth();
+      unsubFiles = firestoreSyncService.subscribeToFiles((liveFiles) => {
+        if (liveFiles && liveFiles.length > 0) {
+          setItems(prev => {
+            const combinedMap = new Map<string, FileItem>();
+            prev.forEach(item => combinedMap.set(item.id, item));
+            liveFiles.forEach(item => combinedMap.set(item.id, item));
+            return Array.from(combinedMap.values()).filter(f => !isFileDeleted(f.id) && !isHiddenSystemItem(f.name, f.mimeType));
+          });
+        }
+      }, currentFolderId);
+    };
+    initFilesLiveSync();
+
     const handleDataChanged = () => {
       if (currentFolderId) fetchContents();
     };
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine && currentFolderId) {
+        fetchContents();
+      }
+    };
+
+    // Auto-sync heartbeat every 15 seconds for real-time folder sync across devices
+    const syncInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine && currentFolderId) {
+        fetchContents();
+      }
+    }, 15000);
+
     window.addEventListener('app-data-changed', handleDataChanged);
     window.addEventListener('online', handleDataChanged);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
     return () => {
+      if (unsubFiles) unsubFiles();
+      clearInterval(syncInterval);
       window.removeEventListener('app-data-changed', handleDataChanged);
       window.removeEventListener('online', handleDataChanged);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
   }, [currentFolderId]);
 

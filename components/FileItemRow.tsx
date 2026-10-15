@@ -44,10 +44,11 @@ const FileItemRow: React.FC<FileItemRowProps> = ({ item, onClick, onDelete, onRe
       if (!showMenu && buttonRef.current) {
           const rect = buttonRef.current.getBoundingClientRect();
           const spaceBelow = window.innerHeight - rect.bottom;
-          const spaceLeft = rect.left;
+          const spaceAbove = rect.top;
           
-          const v = spaceBelow < 220 ? 'top' : 'bottom';
-          const h = spaceLeft < 200 ? 'left' : 'right';
+          const v = (spaceBelow < 250 && spaceAbove > spaceBelow) ? 'top' : 'bottom';
+          // Ensure menu never clips beyond screen borders in both RTL and mobile
+          const h = (rect.left < 200) ? 'left' : 'right';
           
           setMenuPos({v, h});
       }
@@ -162,11 +163,16 @@ const FileItemRow: React.FC<FileItemRowProps> = ({ item, onClick, onDelete, onRe
           </button>
           
           {showMenu && (
+             <>
+             <div 
+                className="fixed inset-0 z-30" 
+                onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+             />
              <div 
                 ref={menuRef}
                 onClick={(e) => e.stopPropagation()} 
-                className={`absolute w-48 bg-white rounded-xl shadow-2xl border border-slate-200 py-1 overflow-hidden animate-scale-in ${originClass}
-                    ${menuPos.v === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'}
+                className={`absolute w-44 bg-white rounded-2xl shadow-2xl border border-slate-200 py-1.5 animate-scale-in ${originClass}
+                    ${menuPos.v === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}
                     ${menuPos.h === 'left' ? 'left-0' : 'right-0'}
                 `}
                 style={{ zIndex: 100 }}
@@ -174,7 +180,7 @@ const FileItemRow: React.FC<FileItemRowProps> = ({ item, onClick, onDelete, onRe
                  {onShare && (
                     <button 
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); onShare(e); }}
-                        className="w-full text-right px-4 py-3 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-3 transition border-b border-slate-50"
+                        className="w-full text-right px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2.5 transition border-b border-slate-100"
                     >
                         <i className="fa-solid fa-share-nodes text-indigo-500 w-4"></i> مشاركة
                     </button>
@@ -182,7 +188,7 @@ const FileItemRow: React.FC<FileItemRowProps> = ({ item, onClick, onDelete, onRe
                  {onAnalyze && (
                     <button 
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); onAnalyze(e); }}
-                        className="w-full text-right px-4 py-3 text-xs font-bold text-indigo-700 hover:bg-indigo-50 flex items-center gap-3 transition border-b border-slate-50"
+                        className="w-full text-right px-3.5 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50 flex items-center gap-2.5 transition border-b border-slate-100"
                     >
                         <i className="fa-solid fa-wand-magic-sparkles text-indigo-500 w-4"></i> تحويل لخطاب
                     </button>
@@ -190,7 +196,7 @@ const FileItemRow: React.FC<FileItemRowProps> = ({ item, onClick, onDelete, onRe
                  {onRename && (
                     <button 
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); onRename(e); }}
-                        className="w-full text-right px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-blue-700 flex items-center gap-3 transition border-b border-slate-50"
+                        className="w-full text-right px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-blue-700 flex items-center gap-2.5 transition border-b border-slate-100"
                     >
                         <i className="fa-solid fa-pen-to-square text-blue-500 w-4"></i> تعديل
                     </button>
@@ -198,18 +204,19 @@ const FileItemRow: React.FC<FileItemRowProps> = ({ item, onClick, onDelete, onRe
                  {onMove && (
                     <button 
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); onMove(e); }}
-                        className="w-full text-right px-4 py-3 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-3 transition border-b border-slate-50"
+                        className="w-full text-right px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2.5 transition border-b border-slate-100"
                     >
                         <i className="fa-solid fa-arrow-right-to-bracket text-orange-500 w-4"></i> نقل
                     </button>
                  )}
                  <button 
                     onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete(e); }}
-                    className="w-full text-right px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-3 transition"
+                    className="w-full text-right px-3.5 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition"
                  >
-                    <i className="fa-solid fa-trash-can w-4"></i> حذف
+                    <i className="fa-solid fa-trash-can text-red-500 w-4"></i> حذف
                  </button>
              </div>
+             </>
           )}
       </div>
     </div>

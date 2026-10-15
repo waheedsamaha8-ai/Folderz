@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Commercial application user account profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "accountType": { "type": "string", "enum": ["commercial_pro", "business", "personal"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Portfolio project document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 256 },
+        "category": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["ONGOING", "COMPLETED", "DESIGN", "PAUSED"] },
+        "location": { "type": "string", "maxLength": 512 },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "fullDescription": { "type": "string", "maxLength": 4096 },
+        "driveFolderId": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name"]
+    },
+    "ProjectLog": {
+      "title": "ProjectLog",
+      "description": "Daily execution log inside a portfolio",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 64 },
+        "content": { "type": "string", "maxLength": 4096 },
+        "createdAt": { "type": "string" },
+        "status": { "type": "string", "maxLength": 64 },
+        "isDeleted": { "type": "boolean" }
+      },
+      "required": ["id", "projectId", "userId", "content"]
+    },
+    "FileItem": {
+      "title": "FileItem",
+      "description": "File or folder document metadata",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "parentId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 256 },
+        "type": { "type": "string", "enum": ["file", "folder"] },
+        "mimeType": { "type": "string", "maxLength": 128 },
+        "size": { "type": "number" },
+        "webViewLink": { "type": "string", "maxLength": 1024 },
+        "thumbnailLink": { "type": "string", "maxLength": 1024 },
+        "previewUrl": { "type": "string", "maxLength": 1024 },
+        "createdTime": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "type"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "User customized portfolio category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "icon": { "type": "string", "maxLength": 64 },
+        "color": { "type": "string", "maxLength": 64 },
+        "bgGradient": { "type": "string", "maxLength": 256 },
+        "badgeBg": { "type": "string", "maxLength": 64 },
+        "badgeText": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 256 }
+      },
+      "required": ["id", "userId", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Commercial user profile"
+    },
+    "/users/{userId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "User's private portfolio project"
+    },
+    "/users/{userId}/projects/{projectId}/logs/{logId}": {
+      "schema": { "$ref": "#/entities/ProjectLog" },
+      "description": "Project execution log"
+    },
+    "/users/{userId}/files/{fileId}": {
+      "schema": { "$ref": "#/entities/FileItem" },
+      "description": "User's file and folder items"
+    },
+    "/users/{userId}/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "User's custom category configurations"
+    }
+  }
+}

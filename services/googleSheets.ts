@@ -592,14 +592,46 @@ class GoogleSheetsService {
 
       if (!searchRes.ok) return [];
       const data = await searchRes.json();
-      const folders: any[] = data.files || [];
+      const rootFolders: any[] = data.files || [];
 
-      const projects: Project[] = [];
+      // Check if there is a 'المشروعات' container folder inside root
+      const projectsContainer = rootFolders.find(f => f.name === 'المشروعات');
+      let subProjectFolders: any[] = [];
+      if (projectsContainer) {
+        try {
+          const subQuery = `'${projectsContainer.id}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+          const subRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(subQuery)}&fields=files(id,name,createdTime,modifiedTime)&pageSize=100`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          if (subRes.ok) {
+            const subData = await subRes.json();
+            subProjectFolders = subData.files || [];
+          }
+        } catch(e) {}
+      }
 
-      for (const folder of folders) {
-        if (!folder.name || folder.name === 'الأرشيف' || folder.name === 'Archive' || folder.name.startsWith('.')) continue;
+      const allFoundFolders = [...rootFolders, ...subProjectFolders];
 
-        let projData = await this.fetchProjectSpreadsheetData(folder.id, folder.id, accessToken);
+      const validFolders = allFoundFolders.filter(f => 
+        f.name && 
+        f.name !== 'المشروعات' &&
+        f.name !== 'الأرشيف' && 
+        f.name !== 'Archive' && 
+        f.name !== 'أرشيف تطبيق الحافظة' &&
+        f.name !== 'ارشيف تطبيق الحافظة' &&
+        !f.name.startsWith('.')
+      );
+
+      // Deduplicate by folder id
+      const folderMap = new Map<string, any>();
+      validFolders.forEach(f => folderMap.set(f.id, f));
+      const uniqueFolders = Array.from(folderMap.values());
+
+      const projects = await Promise.all(uniqueFolders.map(async (folder) => {
+        let projData = null;
+        try {
+          projData = await this.fetchProjectSpreadsheetData(folder.id, folder.id, accessToken);
+        } catch(e) {}
         
         const fullProj: Project = {
           id: folder.id,
@@ -616,8 +648,8 @@ class GoogleSheetsService {
           executionLogs: projData?.executionLogs || []
         };
 
-        projects.push(fullProj);
-      }
+        return fullProj;
+      }));
 
       return projects;
     } catch (e) {

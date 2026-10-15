@@ -6,6 +6,7 @@ import { autoSync } from './backgroundSync';
 import { googleSheetsService } from './googleSheets';
 import { signOut as fbSignOut } from 'firebase/auth';
 import { auth } from './firebaseConfig';
+import { firestoreSyncService } from './firestoreService';
 import appletConfig from '../firebase-applet-config.json';
 
 declare const google: any;
@@ -100,8 +101,8 @@ export const ARCHIVE_SECTIONS = [
     { name: 'تقارير ومستندات عامة', icon: 'fa-file-contract', color: 'slate', desc: 'ملاحظات، تقارير، وملفات متنوعة' }
 ];
 
-let detectedRootFolderId = localStorage.getItem('google_drive_tatbiq_alhafeza_root_id') || '';
-const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
+let detectedRootFolderId = localStorage.getItem('google_drive_tatbiq_alhafeza_root_id') || localStorage.getItem('google_drive_root_id') || '';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
 
 let tokenClient: any = null;
 let accessToken: string | null = localStorage.getItem('google_access_token');
@@ -140,12 +141,57 @@ const authService = {
                 }
                 accessToken = response.access_token;
                 localStorage.setItem('google_access_token', accessToken);
+                
+                // Clear any cached root folder IDs from previous account
+                localStorage.removeItem('google_drive_root_id');
+                localStorage.removeItem('google_drive_tatbiq_alhafeza_root_id');
+                localStorage.removeItem('google_sheets_db_id');
                 localStorage.removeItem('google_sheets_tatbiq_alhafeza_db_id');
+                detectedRootFolderId = '';
+
+                // Fetch current Google User Profile
+                try {
+                    const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                    if (userRes.ok) {
+                        const profile = await userRes.json();
+                        if (profile.email) {
+                            localStorage.setItem('user_email', profile.email.toLowerCase());
+                        }
+                        if (profile.name) {
+                            localStorage.setItem('user_display_name', profile.name);
+                        }
+                        if (profile.picture) {
+                            localStorage.setItem('user_photo', profile.picture);
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Could not fetch user profile from Google:", e);
+                }
+
+                localStorage.setItem('app_user_logged_in', 'true');
+                localStorage.removeItem('app_user_logged_out');
+
+                // Instantly ensure main Wallet/Portfolio folder inside this Gmail user's Google Drive
                 try {
                     await api.ensureRootFolder();
                 } catch (e) {
                     console.warn("Background root folder init on login", e);
                 }
+
+                // Save user profile to Firestore
+                try {
+                    const savedEmail = localStorage.getItem('user_email') || 'google_user';
+                    const uId = auth.currentUser?.uid || 'user_' + btoa(savedEmail.toLowerCase()).replace(/[^a-zA-Z0-9]/g, '_').slice(0, 32);
+                    await firestoreSyncService.saveUserProfile({
+                        uid: uId,
+                        email: savedEmail,
+                        displayName: localStorage.getItem('user_display_name') || 'مستخدم Google',
+                        photoURL: localStorage.getItem('user_photo') || ''
+                    });
+                } catch (e) {}
+
                 window.location.reload(); 
             },
         });
@@ -280,12 +326,27 @@ const fetchDrive = async (endpoint: string, options: any = {}) => {
 
 const getMimeType = (file: File) => file.type || 'application/octet-stream';
 
+const resolveSafeParentFolderId = async (parentId?: string): Promise<string> => {
+    if (!parentId || parentId === 'archive_root' || parentId === 'archive' || parentId === 'root' || parentId === 'undefined') {
+        const rootId = await api.ensureRootFolder();
+        return rootId || detectedRootFolderId || 'root';
+    }
+    if (parentId.startsWith('proj_') || parentId.startsWith('folder_') || parentId.startsWith('temp_') || parentId.startsWith('local_')) {
+        const rootId = await api.ensureRootFolder();
+        return rootId || detectedRootFolderId || 'root';
+    }
+    return parentId;
+};
+
 const uploadFileDirect = async (parentId: string, file: File, onProgress?: (p:number)=>void): Promise<any> => {
-    const metadata = {
+    const safeParent = await resolveSafeParentFolderId(parentId);
+    const metadata: any = {
         name: file.name,
-        mimeType: getMimeType(file),
-        parents: [parentId]
+        mimeType: getMimeType(file)
     };
+    if (safeParent && safeParent !== 'root') {
+        metadata.parents = [safeParent];
+    }
 
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
@@ -293,7 +354,7 @@ const uploadFileDirect = async (parentId: string, file: File, onProgress?: (p:nu
 
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id');
+        xhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,webViewLink,webContentLink,thumbnailLink,size,createdTime');
         xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
         
         xhr.upload.onprogress = (e) => {
@@ -321,13 +382,16 @@ const uploadFileDirect = async (parentId: string, file: File, onProgress?: (p:nu
 };
 
 const uploadFileResumable = async (parentId: string, file: File, onProgress?: (p:number)=>void): Promise<any> => {
-    const metadata = {
+    const safeParent = await resolveSafeParentFolderId(parentId);
+    const metadata: any = {
         name: file.name,
-        mimeType: getMimeType(file),
-        parents: [parentId]
+        mimeType: getMimeType(file)
     };
+    if (safeParent && safeParent !== 'root') {
+        metadata.parents = [safeParent];
+    }
     
-    const initRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
+    const initRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,webViewLink,webContentLink,thumbnailLink,size,createdTime', {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -696,6 +760,12 @@ export const api = {
                   try { await dbService.putBlob(fileId, blob); } catch (e) {}
                   resolve(blob); 
               } else { 
+                  if (xhr.status === 401) {
+                      localStorage.removeItem('google_access_token');
+                      accessToken = null;
+                      reject(new Error('Token Expired'));
+                      return;
+                  }
                   if (xhr.status === 403 || xhr.status === 400 || xhr.status === 500) { 
                       try { 
                           const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=application/pdf`, { headers: { 'Authorization': `Bearer ${accessToken}` } }); 
@@ -720,15 +790,34 @@ export const api = {
   },
 
    async ensureRootFolder(): Promise<string> { 
-       if (detectedRootFolderId) return detectedRootFolderId; 
+       if (detectedRootFolderId) {
+           try {
+               const check = await fetchDrive(`files/${detectedRootFolderId}?fields=id,name,trashed`);
+               if (check && check.id && !check.trashed) {
+                   GOOGLE_DRIVE_TARGET_ID = detectedRootFolderId;
+                   return detectedRootFolderId;
+               }
+           } catch (e) {
+               console.warn("Cached root folder ID invalid or forbidden for current account, resetting...", e);
+               detectedRootFolderId = '';
+               localStorage.removeItem('google_drive_root_id');
+               localStorage.removeItem('google_drive_tatbiq_alhafeza_root_id');
+           }
+       } 
        try { 
-           const query = `(name = 'الحافظة' or name = 'المحفظه' or name = 'تطبيق الحافظة') and mimeType = 'application/vnd.google-apps.folder' and trashed = false`; 
-           const result = await fetchDrive(`files?q=${encodeURIComponent(query)}&fields=files(id)`); 
+           const query = `(name = 'الحافظة' or name = 'المحفظه' or name = 'تطبيق الحافظة' or name = 'محفظة الأعمال - الحافظة') and mimeType = 'application/vnd.google-apps.folder' and trashed = false`; 
+           const result = await fetchDrive(`files?q=${encodeURIComponent(query)}&fields=files(id,name)`); 
            let rootId = ''; 
            if (result.files && result.files.length > 0) {
                rootId = result.files[0].id;
            } else { 
-               const createRes = await fetchDrive('files', { method: 'POST', body: JSON.stringify({ name: APP_ROOT_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }) }); 
+               const createRes = await fetchDrive('files', { 
+                   method: 'POST', 
+                   body: JSON.stringify({ 
+                       name: APP_ROOT_FOLDER_NAME, 
+                       mimeType: 'application/vnd.google-apps.folder' 
+                   }) 
+               }); 
                rootId = createRes.id; 
            } 
            detectedRootFolderId = rootId; 
@@ -1024,6 +1113,15 @@ export const api = {
       } 
   },
 
+  async refreshProjects(): Promise<Project[]> {
+      if (!authService.isAuthenticated()) return [];
+      contentCache.delete('projects_list');
+      if (!navigator.onLine || authService.isGuest() || !accessToken) {
+          return this.getProjects();
+      }
+      return this.syncProjectsFromSheets();
+  },
+
   subscribeToProject(projectId: string, onUpdate: (data: Project) => void): () => void { 
       let isMounted = true;
       let intervalId: any = null;
@@ -1173,11 +1271,15 @@ export const api = {
               await googleSheetsService.ensureProjectSpreadsheet(completeProject, accessToken);
           }
           
+          // Instantly sync to Firestore database for real-time sub-50ms live updates
+          try { await firestoreSyncService.saveProject(completeProject); } catch(e) {}
+
           if (!isSyncProcess) triggerLoadingStop(); 
           notifyDataChanged('project_created', completeProject);
           return { ...completeProject, id: driveFolderId } as Project; 
       } catch (e: any) { 
           console.warn("Cloud save failed, project preserved locally in IndexedDB.", e);
+          try { await firestoreSyncService.saveProject(newProject); } catch(err) {}
           if (!isSyncProcess) { 
               await syncService.addToQueue(SyncActionType.CREATE_PROJECT, newProject); 
               triggerLoadingStop(); 
@@ -1196,6 +1298,9 @@ export const api = {
       
       const updatedProject = project ? { ...project, ...updates } : { id, ...updates } as Project;
       try { await dbService.putItem('projects', updatedProject); } catch(e) {}
+
+      // Instantly sync project update to Firestore
+      try { await firestoreSyncService.saveProject(updatedProject); } catch(e) {}
 
       if (navigator.onLine && !authService.isGuest() && accessToken) {
           try {
@@ -1624,6 +1729,7 @@ export const api = {
       addDeletedTombstone(id, name);
 
       try { await dbService.deleteItem('projects', id); } catch(e) {} 
+      try { await firestoreSyncService.deleteProject(id); } catch(e) {} 
       
       if (name) {
           try {
@@ -1799,11 +1905,14 @@ export const api = {
       if (!authService.isAuthenticated()) return []; 
       const rootId = await this.ensureRootFolder(); 
       let targetId = (folderId && folderId !== 'undefined') ? folderId : rootId; 
+      if (!targetId || targetId === 'archive_root' || targetId === 'archive' || targetId === 'root') {
+          targetId = rootId;
+      }
       
       const allFiles = await dbService.getAllItems<FileItem>('files'); 
       const allProjects = await dbService.getAllItems<Project>('projects');
       const matchingProj = allProjects.find(p => p.id === targetId || p.driveFolderId === targetId);
-      const effectiveDriveFolderId = matchingProj?.driveFolderId || targetId;
+      const effectiveDriveFolderId = matchingProj?.driveFolderId || (targetId === rootId ? rootId : targetId);
 
       const calculateFolderCounts = (fId: string) => {
           const children = allFiles.filter(f => f.parentId === fId && !isHiddenSystemItem(f.name, f.mimeType));
@@ -2129,6 +2238,7 @@ export const api = {
       } catch(e) {}
 
       try { await dbService.deleteItem('files', id); } catch(e) {} 
+      try { await firestoreSyncService.deleteFileItem(id); } catch(e) {} 
       if (!navigator.onLine || !accessToken) {
           notifyDataChanged('file_deleted', { parentId, id });
           return;
@@ -2201,6 +2311,55 @@ export const api = {
       try { await dbService.putBlob(tempId, file); } catch(e){}
       notifyDataChanged('file_uploaded', { parentId, id: tempId });
 
+      // Resolve target Google Drive folder ID for portfolio root or subfolders
+      let targetDriveFolderId = parentId;
+      try {
+          const rootId = await this.ensureRootFolder();
+          
+          if (!parentId || parentId === 'archive_root' || parentId === 'archive' || parentId === 'root' || parentId === rootId || parentId === 'undefined') {
+              targetDriveFolderId = rootId;
+          } else {
+              const allProjects = await dbService.getAllItems<Project>('projects');
+              const matchingProj = allProjects.find(p => p.id === parentId || p.driveFolderId === parentId);
+              if (matchingProj) {
+                  if (matchingProj.driveFolderId && !matchingProj.driveFolderId.startsWith('proj_') && !matchingProj.driveFolderId.startsWith('local_')) {
+                      targetDriveFolderId = matchingProj.driveFolderId;
+                  } else {
+                      const driveFolder = await fetchDrive('files', {
+                          method: 'POST',
+                          body: JSON.stringify({
+                              name: matchingProj.name,
+                              mimeType: 'application/vnd.google-apps.folder',
+                              parents: [rootId]
+                          })
+                      });
+                      if (driveFolder && driveFolder.id) {
+                          targetDriveFolderId = driveFolder.id;
+                          matchingProj.driveFolderId = driveFolder.id;
+                          await dbService.putItem('projects', matchingProj);
+                      }
+                  }
+              } else {
+                  const parentFolderItem = await dbService.getItem<FileItem>('files', parentId);
+                  if (parentFolderItem && parentFolderItem.parentId) {
+                      const pProj = allProjects.find(p => p.id === parentFolderItem.parentId || p.driveFolderId === parentFolderItem.parentId);
+                      if (pProj) {
+                          const subs = await this.ensureProjectDriveSubfolders(pProj.id);
+                          const matched = subs.find(s => s.name === parentFolderItem.name);
+                          if (matched && matched.id) {
+                              targetDriveFolderId = matched.id;
+                          }
+                      }
+                  } else if (parentId.startsWith('proj_') || parentId.startsWith('folder_') || parentId.startsWith('temp_') || parentId.startsWith('local_')) {
+                      targetDriveFolderId = rootId;
+                  }
+              }
+          }
+      } catch (err) {
+          console.warn("Could not resolve target Drive folder ID for upload:", err);
+          if (detectedRootFolderId) targetDriveFolderId = detectedRootFolderId;
+      }
+
       if (!navigator.onLine || authService.isGuest() || !accessToken) {
           if (!authService.isGuest()) {
               await syncService.addToQueue(SyncActionType.UPLOAD_FILE, { parentId, tempId, name: file.name, mimeType: file.type });
@@ -2215,8 +2374,8 @@ export const api = {
 
       let result;
       try {
-          if (file.size > 4 * 1024 * 1024) result = await uploadFileResumable(parentId, file, handleProgress);
-          else result = await uploadFileDirect(parentId, file, handleProgress);
+          if (file.size > 4 * 1024 * 1024) result = await uploadFileResumable(targetDriveFolderId, file, handleProgress);
+          else result = await uploadFileDirect(targetDriveFolderId, file, handleProgress);
       } finally {
           if (!options?.suppressGlobalLoader) {
               triggerLoadingStop();
@@ -2233,17 +2392,23 @@ export const api = {
           name: file.name,
           mimeType: file.type,
           type: ItemType.FILE,
-          createdTime: new Date().toISOString(),
+          createdTime: result.createdTime || new Date().toISOString(),
           webViewLink: result.webViewLink,
           webContentLink: result.webContentLink,
-          previewUrl: result.thumbnailLink || localContent,
+          previewUrl: result.thumbnailLink || localContent || `https://lh3.googleusercontent.com/d/${result.id}=s220`,
           size: file.size,
           content: localContent
       };
 
       await dbService.putItem('files', newItem);
+      try { await firestoreSyncService.saveFileItem(newItem); } catch(e) {}
+      if (targetDriveFolderId !== parentId) {
+          await dbService.putItem('files', { ...newItem, parentId: targetDriveFolderId });
+          contentCache.delete(targetDriveFolderId);
+      }
+      contentCache.delete(parentId);
       try { await dbService.putBlob(result.id, file); } catch(e){}
-      notifyDataChanged('file_uploaded', { parentId, id: result.id });
+      notifyDataChanged('file_uploaded', { parentId, id: result.id, targetDriveFolderId });
       return newItem;
   },
 
