@@ -137,7 +137,8 @@ const authService = {
             scope: SCOPES,
             callback: async (response: any) => {
                 if (response.error !== undefined) {
-                    throw (response);
+                    console.warn("Google GIS Response Error:", response);
+                    return;
                 }
                 accessToken = response.access_token;
                 localStorage.setItem('google_access_token', accessToken);

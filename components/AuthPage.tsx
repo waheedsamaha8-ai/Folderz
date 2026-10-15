@@ -3,7 +3,9 @@ import { auth, googleProvider } from '../services/firebaseConfig';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
-    updateProfile 
+    updateProfile,
+    signInWithPopup,
+    GoogleAuthProvider
 } from 'firebase/auth';
 import { api } from '../services/api';
 import { AppLogo } from './AppLogo';
@@ -210,15 +212,52 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
         setSuccessMessage('');
 
         try {
-            localStorage.setItem('app_user_logged_in', 'true');
-            localStorage.removeItem('app_user_logged_out');
-            
-            await api.signIn();
-            
-            setSuccessMessage('جاري الربط والتحويل لحساب Google...');
-        } catch (err: any) {
-            console.error('Google Auth Error:', err);
-            setErrorMessage('تعذر فتح نافذة دخول Google. يرجى السماح بالنوافذ المنبثقة.');
+            // 1. Try Firebase Popup Auth (Uses unique-decoder-sv9wh.firebaseapp.com handler, zero origin_mismatch)
+            const result = await signInWithPopup(auth, googleProvider);
+            if (result.user) {
+                const credential = GoogleAuthProvider.credentialFromResult(result);
+                if (credential?.accessToken) {
+                    localStorage.setItem('google_access_token', credential.accessToken);
+                }
+                const email = result.user.email?.toLowerCase() || '';
+                if (email) localStorage.setItem('user_email', email);
+                if (result.user.displayName) localStorage.setItem('user_display_name', result.user.displayName);
+                if (result.user.photoURL) localStorage.setItem('user_photo', result.user.photoURL);
+
+                localStorage.setItem('app_user_logged_in', 'true');
+                localStorage.removeItem('app_user_logged_out');
+
+                // Save profile to Firestore
+                const uId = result.user.uid;
+                await firestoreSyncService.saveUserProfile({
+                    uid: uId,
+                    email: email,
+                    displayName: result.user.displayName || 'مستخدم Google',
+                    photoURL: result.user.photoURL || ''
+                }, { accountType }).catch(console.warn);
+
+                setSuccessMessage('تم تسجيل الدخول بحساب Google بنجاح! جاري إعداد المجلدات...');
+
+                try { await api.ensureRootFolder(); } catch (e) {}
+
+                setTimeout(() => {
+                    if (onAuthSuccess) onAuthSuccess();
+                    else window.location.reload();
+                }, 600);
+                return;
+            }
+        } catch (popupErr: any) {
+            console.warn('Firebase Popup Google Auth fallback:', popupErr);
+            // 2. Fallback to GIS Direct Token Client
+            try {
+                localStorage.setItem('app_user_logged_in', 'true');
+                localStorage.removeItem('app_user_logged_out');
+                await api.signIn();
+                setSuccessMessage('جاري الربط مع Google...');
+            } catch (gisErr: any) {
+                console.error('Google Auth Error:', gisErr);
+                setErrorMessage('عذراً، يتعذر دخول Google المباشر من هذا النطاق. يرجى إدخال البريد الإلكتروني وكلمة السر أدناه للدخول الفوري والدائم.');
+            }
         } finally {
             setLoadingGoogle(false);
         }
